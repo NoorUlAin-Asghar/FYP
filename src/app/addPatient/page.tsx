@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { savePitchToDB } from "@/lib/pitch-db";
+import { savePatientToDB } from "@/lib/patient-db";
 import supabase from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";

@@ -1,8 +1,8 @@
-// lib/db/pitch.ts
+// lib/db/patient.ts
 
 import supabase from "./supabaseClient";
 
-export async function savePitchToDB({
+export async function savePatientToDB({
     title,
     body,
     user_id,
@@ -14,7 +14,7 @@ export async function savePitchToDB({
     // console.log(title,"\n",body,"\n",user_id)
     // console.log(user_id)
 
-    const { error } = await supabase.from("pitches").insert([
+    const { error } = await supabase.from("patients").insert([
         {
         user_id,
         title,
@@ -23,17 +23,17 @@ export async function savePitchToDB({
     ]);
 
     if (error) {
-        console.error("Error saving pitch"/*, error.message*/);
-        return {"message":"Unable to save pitch"};
+        console.error("Error saving patient"/*, error.message*/);
+        return {"message":"Unable to save patient"};
     }
     else{
-        console.log("pitch successfully added to DB")
-        return {"message":"Pitch saved successfully."};
+        console.log("patient successfully added to DB")
+        return {"message":"Patient saved successfully."};
     }
 }
 
 
-export async function getUserPitchesWithEmail() {
+export async function getUserPatientsWithEmail() {
   // Get the currently logged-in user
   const {
     data: { user },
@@ -42,36 +42,36 @@ export async function getUserPitchesWithEmail() {
 
   if (userError || !user) {
     console.error("User fetch error"/*, userError?.message*/);
-    return { email: null, pitches: [], count: 0 };
+    return { email: null, patients: [], count: 0 };
   }
 
   // Fetch the user's pitches
-  const { data: pitches, error } = await supabase
-    .from("pitches")
-    .select("id, title, body, created_at")
+  const { data: patients, error } = await supabase
+    .from("patients")
+    .select("patient_id, cnic, name, dob, gender, created_at")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false });
 
   if (error) {
-    console.error("Error fetching pitches" /*error.message*/);
-    return { email: user.email, pitches: [], count: 0 };
+    console.error("Error fetching patients", error.message);
+    return { email: user.email, patients: [], count: 0 };
   }
   else{
-    console.log("Fetched data successfully" /*user.email, pitches, pitches.length*/)
+    console.log("Fetched data successfully" /*user.email, patients, pitches.length*/)
   }
 
   return {
     email: user.email,
-    pitches,
-    count: pitches.length,
+    patients,
+    count: patients.length,
   };
 }
 
-export async function saveChangesToDb(pitchId:string, newTitle:string, newBody:string) {
+export async function saveChangesToDb(patientId:string, newName:string, newDOB: Date, newGender:string) {
     const { data, error } = await supabase
-        .from("pitches")
-        .update({ title: newTitle, body: newBody, updated_at: new Date().toISOString() })
-        .eq("id", pitchId);
+        .from("patients")
+        .update({ name: newName, dob: newDOB, gender: newGender, updated_at: new Date().toISOString() })
+        .eq("id", patientId);
 
     if (error) {
         console.error("Error updating pitch"/*, error.message*/);
@@ -79,7 +79,7 @@ export async function saveChangesToDb(pitchId:string, newTitle:string, newBody:s
         return {"status":"danger","message":"Failed to save changes"};;
     }
 
-    console.log("Pitch updated"/*, data*/);
+    console.log("Patient updated"/*, data*/);
     return {"status":"success","message":"Changes saved successfully."};
 }
 
