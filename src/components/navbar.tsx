@@ -48,7 +48,7 @@ export function Navbar() {
   }
 
   return (
-    <nav className="px-3 py-1 shadow-md">
+    <nav className="fixed top-0 left-0 right-0 z-50 px-3 py-1 shadow-md bg-white">
       <div className="text-[#008080] max-w-7xl mx-auto grid grid-cols-2 items-center">
         {/* Left-side nav items */}
         <NavigationMenu>

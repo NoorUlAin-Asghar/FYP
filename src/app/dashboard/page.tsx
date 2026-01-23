@@ -4,37 +4,6 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import ProtectedRoute from "@/components/protectedRoute";
 import { getUserPatientsWithEmail } from "@/lib/patient-db";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Sheet,
-  SheetClose,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
-import { Button } from "@/components/ui/button"
-import { Calendar } from "@/components/ui/calendar"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
-import { Field, FieldLabel } from "@/components/ui/field"
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-
-import { saveChangesToDb, deletePitchFromDb } from "@/lib/patient-db";
 import { motion } from "framer-motion";
 import { Plus } from "lucide-react"
 import { toast } from "sonner";
@@ -48,26 +17,20 @@ type Patient = {
   created_at: Date; 
 };
 
-
 export default function Dashboard() {
   const [userEmail, setUserEmail] = useState("");
   const [patients, setPatients] = useState<Patient[]>([]);
   const [count,setCount]=useState(0)
   const router = useRouter();
-  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
-  const [editedName, setEditedName] = useState("");
-  const [editedDOB, setEditedDOB] = useState<Date>(new Date());
-  const [editedGender, setEditedGender] = useState("");
   const [loading,setLoading]=useState(false)
   const [message, setMessage]= useState<string | null>(null);
   const [status,setStatus]=useState<string | null>(null);
-  const [open, setOpen] = useState(false)
 
   useEffect(() => {
     getData();
   }, []);
 
-  //show required toast message (successful or unsuccessful deletion/editing of pitch)
+  //show required toast message (successful or unsuccessful fetching of data)
   useEffect(() => {
     if (status==="success")
       toast.success(message)
@@ -86,6 +49,8 @@ export default function Dashboard() {
       setCount(data?.count || 0);
     } catch (error) {
       console.error("Failed to get Data");
+      setMessage("Failed to get Data")
+      setStatus("danger")
     }
     finally{
       setLoading(false);
@@ -97,37 +62,6 @@ export default function Dashboard() {
     router.push("/addPatient");
   };
   
-  const editPitch = async (id: string, newName: string, newDOB: Date, newGender: string) => {
-    try{
-      setLoading(true);
-      console.log("Saving")
-      // console.log("Saving", id, newTitle, newBody);
-      const res=await saveChangesToDb(id,newName,newDOB, newGender)
-      setMessage(res.message);
-      setStatus(res.status)
-      await getData();
-    }
-    finally{
-      setLoading(false)
-    }
-  };
-
-  const deletePitch = async (id: string) => {
-    try{
-      setLoading(true)
-      console.log("Deleting")
-      // console.log("Deleting", id);
-      const res=await deletePitchFromDb(id)
-      setMessage(res.message);
-      setStatus(res.status)
-      await getData();
-      
-    }
-    finally{
-      setLoading(false)
-    }
-  };
-
   // 1️⃣ Sort patients alphabetically
   const sortedPatients = [...patients].sort((a, b) =>
     a.name.localeCompare(b.name)
@@ -209,137 +143,25 @@ export default function Dashboard() {
                     {/* Patients under this alphabet */}
                     <div className="space-y-3">
                       {groupedPatients[letter].map((patient, i) => (
-                        <Sheet key={patient.patient_id}>
-                          <SheetTrigger asChild>
-                            <div
-                              onClick={() => {
-                                setSelectedPatient(patient);
-                                setEditedName(patient.name || "");
-                                setEditedDOB(new Date(patient.dob));
-                                setEditedGender(patient.gender || "");
-                              }}
-                              className="bg-[#008080] text-white p-4 rounded-md hover:drop-shadow-2xl transition hover:cursor-pointer"
-                            >
-                              <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                                <h3 className="font-medium truncate max-w-xs">
-                                  {patient.name || "Unnamed Patient"}
-                                </h3>
+                        <div
+                            key={patient.patient_id}
+                            onClick={() => router.push(`/patient/${patient.patient_id}`)}
+                            className="bg-[#008080] text-white p-4 rounded-md hover:drop-shadow-2xl transition hover:cursor-pointer"
+                          >
+                           <div className="grid grid-cols-[1fr_180px_180px] items-center">
+                              <h3 className="font-medium truncate">
+                                {patient.name}
+                              </h3>
 
-                                <p className="text-sm text-white italic truncate max-w-xs">
-                                  CNIC: {patient.cnic}
-                                </p>
+                              <p className="text-sm text-white italic truncate">
+                                CNIC: {patient.cnic}
+                              </p>
 
-                                <p className="text-sm text-white italic truncate max-w-xs">
-                                  Add Date: {new Date(patient.created_at).toLocaleDateString()}
-                                </p>
-                              </div>
-                              <p className="mt-2 text-sm text-gray-100">
+                              <p className="text-sm text-white italic truncate">
                                 DOB: {new Date(patient.dob).toLocaleDateString()}
                               </p>
                             </div>
-                          </SheetTrigger>
-
-                          {/* Sheet stays EXACTLY the same */}
-                          <SheetContent>
-                            <SheetHeader>
-                              <SheetTitle>Edit Patient</SheetTitle>
-                              <SheetDescription>
-                                Update your patient information. Save to apply changes or
-                                delete permanently.
-                              </SheetDescription>
-                            </SheetHeader>
-
-                            <div className="grid flex-1 auto-rows-min gap-6 px-4 mt-4">
-                              <div className="grid gap-3">
-                                <Label>Name</Label>
-                                <Input
-                                  value={editedName}
-                                  onChange={(e) => setEditedName(e.target.value)}
-                                />
-                              </div>
-
-                              <div className="grid gap-3">
-                                <Label>Date of Birth</Label>
-                                  <Popover open={open} onOpenChange={setOpen}>
-                                    <PopoverTrigger asChild>
-                                      <Button
-                                        variant="outline"
-                                        id="date"
-                                        className="justify-start font-normal"
-                                      >
-                                        {editedDOB.toLocaleDateString()}
-                                      </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-auto overflow-hidden p-0" align="start">
-                                      <Calendar
-                                        mode="single"
-                                        selected={editedDOB}
-                                        defaultMonth={editedDOB}
-                                        captionLayout="dropdown"
-                                        onSelect={(date) => {
-                                          if (date){
-                                            setEditedDOB(date);
-                                            setOpen(false);
-                                          }
-                                        }}
-                                      />
-                                    </PopoverContent>
-                                  </Popover>
-                              </div>
-
-                              <div className="grid gap-3">
-                                <Label>Gender</Label>
-                                <Select
-                                  value={editedGender}
-                                  onValueChange={setEditedGender}
-                                >
-                                  <SelectTrigger className="w-full max-w-48">
-                                    <SelectValue placeholder="Select gender" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectGroup>
-                                      <SelectLabel>Gender</SelectLabel>
-                                      <SelectItem value="female">Female</SelectItem>
-                                      <SelectItem value="male">Male</SelectItem>
-                                    </SelectGroup>
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            </div>
-
-                            <SheetFooter className="flex gap-2">
-                              <SheetClose asChild>
-                                <Button
-                                  variant="destructive"
-                                  onClick={() =>
-                                    selectedPatient &&
-                                    deletePitch(selectedPatient.patient_id)
-                                  }
-                                  className="flex-1"
-                                >
-                                  Delete
-                                </Button>
-                              </SheetClose>
-
-                              <SheetClose asChild>
-                                <Button
-                                  className="flex-1 bg-[#008080]"
-                                  onClick={() =>
-                                    selectedPatient &&
-                                    editPitch(
-                                      selectedPatient.patient_id,
-                                      editedName,
-                                      editedDOB,
-                                      editedGender
-                                    )
-                                  }
-                                >
-                                  Save Changes
-                                </Button>
-                              </SheetClose>
-                            </SheetFooter>
-                          </SheetContent>
-                        </Sheet>
+                          </div>
                       ))}
                     </div>
                   </div>

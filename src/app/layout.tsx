@@ -35,7 +35,9 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} ${dancingScript.variable} antialiased`}
       >
         <Navbar/>
-        {children}
+        <main className="pt-15">
+          {children}
+        </main>
         <Toaster richColors position="top-right" />
       </body>
     </html>

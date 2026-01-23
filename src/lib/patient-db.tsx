@@ -67,7 +67,24 @@ export async function getUserPatientsWithEmail() {
   };
 }
 
-export async function saveChangesToDb(patientId:string, newName:string, newDOB: Date, newGender:string) {
+export const getPatientById = async (id: string) => {
+  const { data: patient, error } = await supabase
+    .from("patients")
+    .select("*")
+    .eq("patient_id", id)
+    .single();
+
+  if (error) {
+    console.error("Error updating pitch"/*, error.message*/);
+    //alert("Failed to save changes.");
+    return {patient: null};
+  }
+  console.log(patient)
+  return patient;
+};
+
+
+export async function updatePatientToDb(patientId:string, newName:string, newDOB: Date, newGender:string) {
     const { data, error } = await supabase
         .from("patients")
         .update({ name: newName, dob: newDOB, gender: newGender, updated_at: new Date().toISOString() })
@@ -76,14 +93,14 @@ export async function saveChangesToDb(patientId:string, newName:string, newDOB: 
     if (error) {
         console.error("Error updating pitch"/*, error.message*/);
         //alert("Failed to save changes.");
-        return {"status":"danger","message":"Failed to save changes"};;
+        return {"status":"danger","message":"Failed to save changes"};
     }
 
     console.log("Patient updated"/*, data*/);
     return {"status":"success","message":"Changes saved successfully."};
 }
 
-export async function deletePitchFromDb(pitchId:string) {
+export async function deletePatientFromDb(pitchId:string) {
   const { error } = await supabase
     .from("pitches")
     .delete()
