@@ -90,8 +90,15 @@ export function Navbar() {
                     <ChevronDown className="w-4 h-4" />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={handleSignOut}>Sign Out</DropdownMenuItem>
-                  </DropdownMenuContent>
+                  <DropdownMenuItem asChild>
+                    <Link href="/edit-profile">Edit Profile</Link>
+                  </DropdownMenuItem>
+
+                  <DropdownMenuItem onClick={handleSignOut}>
+                    Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+
                 </DropdownMenu>
                 </>
                 :
