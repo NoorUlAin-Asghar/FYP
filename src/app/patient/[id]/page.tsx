@@ -36,7 +36,18 @@ import {
 
 import { getPatientById, updatePatientToDb, deletePatientFromDb } from "@/lib/patient-db";
 import { motion } from "framer-motion";
-import { Plus } from "lucide-react"
+import {
+  User,
+  CalendarDays,
+  IdCard,
+  VenusAndMars,
+  Pencil,
+  Trash2,
+  Plus,
+  Clock, 
+  RefreshCcw,
+  Cake
+} from "lucide-react";
 import { toast } from "sonner";
 
 type Patient = {
@@ -46,10 +57,52 @@ type Patient = {
   dob: Date;
   gender: string;
   created_at: Date; 
+  updated_at:  Date | undefined;
 };
 
+type Scan = {
+  scan_id: string;
+  scan_name: string;
+  created_at: Date;
+};
 
-export default function PatientDetail() {
+//calculating age from date of birth
+const calculateAge = (dob: Date) => {
+  const today = new Date();
+  let age = today.getFullYear() - dob.getFullYear();
+  const m = today.getMonth() - dob.getMonth();
+
+  if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
+    age--;
+  }
+
+  return age;
+};
+
+//displaying patient information 
+function DetailItem({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-start gap-3">
+      <div className="text-[#008080] mt-1">{icon}</div>
+      <div>
+        <p className="text-sm text-gray-500">{label}</p>
+        <p className="text-lg font-semibold text-gray-900">
+          {value}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+export default function PatientProfile() {
   const { id } = useParams<{ id: string }>();
   const [patient, setPatient] = useState<Patient>();
   const router = useRouter();
@@ -60,7 +113,9 @@ export default function PatientDetail() {
   const [loading,setLoading]=useState(true)
   const [message, setMessage]= useState<string | null>(null);
   const [status,setStatus]=useState<string | null>(null);
-  const [open, setOpen] = useState(false)
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
+
 
   useEffect(() => {
         if (!id) return;
@@ -90,6 +145,7 @@ export default function PatientDetail() {
         cnic: String(data.cnic),
         dob: new Date(data.dob),
         created_at: new Date(data.created_at),
+        updated_at: data.updated_at ? new Date(data.updated_at) : undefined,
         };
 
         setPatient(normalizedPatient);
@@ -107,6 +163,7 @@ export default function PatientDetail() {
     router.push("/addScan");
   };
   
+  //edit patient
   const editPatient = async (id: string, newName: string, newDOB: Date, newGender: string) => {
     try{
       setLoading(true);
@@ -122,6 +179,7 @@ export default function PatientDetail() {
     }
   };
 
+  //delete patient
   const deletePatient = async (id: string) => {
     try{
       setLoading(true)
@@ -137,6 +195,7 @@ export default function PatientDetail() {
       setLoading(false)
     }
   };
+
 
   //loading screen
   if (loading) {
@@ -169,12 +228,219 @@ if (patient){
             </button>
           </div>
 
+          {/* Patient Details Card */}
+          <div className="bg-[#008080] p-6 rounded-2xl shadow-lg">
+            <div className="bg-white rounded-xl p-6">
+
+              {/* Header row */}
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-gray-900 font-dancing">
+                  Personal Details
+                </h2>
+
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    className="gap-2"
+                    onClick={() => {
+                      setEditedName(patient.name);
+                      setEditedDOB(patient.dob);
+                      setEditedGender(patient.gender);
+                      setSheetOpen(true);
+                    }}
+                  >
+                  <Pencil className="w-4 h-4" />
+                    Edit
+                  </Button>
+
+                  <Button
+                    variant="destructive"
+                    className="gap-2"
+                    onClick={() => deletePatient(patient.patient_id)}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Delete
+                  </Button>
+                </div>
+              </div>
+
+              {/* Details grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+
+                {/* Name */}
+                <DetailItem icon={<User />} label="Name" value={patient.name} />
+
+                {/* CNIC */}
+                <DetailItem icon={<IdCard />} label="CNIC" value={patient.cnic} />
+
+                {/* DOB */}
+                <DetailItem
+                  icon={<CalendarDays />}
+                  label="Date of Birth"
+                  value={patient.dob.toLocaleDateString()}
+                />
+
+                {/* Age - derived */}
+                <DetailItem
+                  icon={<Cake />}
+                  label="Age"
+                  value={`${calculateAge(patient.dob)} years`}
+                />
+
+
+                {/* Gender */}
+                <DetailItem
+                  icon={<VenusAndMars />}
+                  label="Gender"
+                  value={patient.gender}
+                />
+              </div>
+              {/* Meta info */}
+              <div className="mt-8 pt-4 border-t border-gray-200 flex flex-col sm:flex-row gap-4 text-sm text-gray-500">
+
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-[#008080]" />
+                  <span>
+                    Created on{" "}
+                    <span className="font-medium text-gray-700">
+                      {patient.created_at.toLocaleDateString()}
+                    </span>
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <RefreshCcw className="w-4 h-4 text-[#008080]" />
+                  <span>
+                    Last updated{" "}
+                    <span className="font-medium text-gray-700">
+                      {patient.updated_at?.toLocaleDateString() || "—"}
+                    </span>
+                  </span>
+                </div>
+
+              </div>
+
+            </div>
+          </div>
+
+          {/*Edit and Delete Sheet of Patient Info*/}
+          <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+            <SheetContent>
+              <SheetHeader>
+                <SheetTitle>Edit Patient</SheetTitle>
+                <SheetDescription>
+                  Update your patient information. Save to apply changes or
+                  delete permanently.
+                </SheetDescription>
+              </SheetHeader>
+
+              <div className="grid flex-1 auto-rows-min gap-6 px-4 mt-4">
+                <div className="grid gap-3">
+                  <Label>Name</Label>
+                  <Input
+                    value={editedName}
+                    onChange={(e) => setEditedName(e.target.value)}
+                  />
+                </div>
+
+                <div className="grid gap-3">
+                  <Label>Date of Birth</Label>
+                    <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          id="date"
+                          className="justify-start font-normal"
+                        >
+                          {editedDOB.toLocaleDateString()}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto overflow-hidden p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={editedDOB}
+                          defaultMonth={editedDOB}
+                          captionLayout="dropdown"
+                          onSelect={(date) => {
+                            if (date){
+                              setEditedDOB(date);
+                              setSheetOpen(false);
+                            }
+                          }}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                </div>
+
+                <div className="grid gap-3">
+                  <Label>Gender</Label>
+                  <Select
+                    value={editedGender}
+                    onValueChange={setEditedGender}
+                  >
+                    <SelectTrigger className="w-full max-w-48">
+                      <SelectValue placeholder="Select gender" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        <SelectLabel>Gender</SelectLabel>
+                        <SelectItem value="female">female</SelectItem>
+                        <SelectItem value="male">male</SelectItem>
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <SheetFooter className="flex gap-2">
+                <SheetClose asChild>
+                  <Button
+                    variant="destructive"
+                    onClick={() =>
+                      deletePatient(patient.patient_id)
+                    }
+                    className="flex-1"
+                  >
+                    Delete
+                  </Button>
+                </SheetClose>
+
+                <SheetClose asChild>
+                  <Button
+                    className="flex-1 bg-[#008080]"
+                    onClick={() =>
+                      editPatient(
+                        patient.patient_id,
+                        editedName,
+                        editedDOB,
+                        editedGender
+                      )
+                    }
+                  >
+                    Save Changes
+                  </Button>
+                </SheetClose>
+              </SheetFooter>
+            </SheetContent>
+          </Sheet>
+
+
+
+
           {/* <div className="flex justify-between items-center mt-6">
             <div>
               <h2 className="text-xl font-semibold text-gray-800">Total Scans</h2>
               <p className="text-2xl font-bold text-[#008080]">{count}</p>
             </div>
           </div> */}
+
+          <div className="mt-10">
+          <h2 className="text-lg font-semibold text-gray-800 mb-4">
+            Patient Scans
+          </h2>
+
+          
+        </div>
 
         </div>
       </div>

@@ -45,10 +45,10 @@ export async function getUserPatientsWithEmail() {
     return { email: null, patients: [], count: 0 };
   }
 
-  // Fetch the user's pitches
+  // Fetch the user's patients
   const { data: patients, error } = await supabase
     .from("patients")
-    .select("patient_id, cnic, name, dob, gender, created_at")
+    .select("patient_id, cnic, name, dob, gender, created_at, updated_at")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false });
 
@@ -88,10 +88,10 @@ export async function updatePatientToDb(patientId:string, newName:string, newDOB
     const { data, error } = await supabase
         .from("patients")
         .update({ name: newName, dob: newDOB, gender: newGender, updated_at: new Date().toISOString() })
-        .eq("id", patientId);
+        .eq("patient_id", patientId);
 
     if (error) {
-        console.error("Error updating pitch"/*, error.message*/);
+        console.error("Error updating patient", error.message);
         //alert("Failed to save changes.");
         return {"status":"danger","message":"Failed to save changes"};
     }
@@ -100,18 +100,18 @@ export async function updatePatientToDb(patientId:string, newName:string, newDOB
     return {"status":"success","message":"Changes saved successfully."};
 }
 
-export async function deletePatientFromDb(pitchId:string) {
+export async function deletePatientFromDb(patientId:string) {
   const { error } = await supabase
-    .from("pitches")
+    .from("patients")
     .delete()
-    .eq("id", pitchId);
+    .eq("patient_id", patientId);
 
   if (error) {
-    console.error("Error deleting pitch", /*error.message*/);
+    console.error("Error deleting patients", /*error.message*/);
     //alert("Failed to delete pitch.");
-    return {"status":"danger","message":"Failed to delete pitch."};
+    return {"status":"danger","message":"Failed to delete patient."};
   }
 
   //alert("Pitch deleted successfully!");
-  return {"status":"success","message":"Pitch deleted successfully"};
+  return {"status":"success","message":"Patient deleted successfully"};
 }
