@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useRouter, useParams  } from "next/navigation";
 import ProtectedRoute from "@/components/protectedRoute";
-import { getUserPatientsWithEmail } from "@/lib/patient-db";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -23,7 +22,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { Field, FieldLabel } from "@/components/ui/field"
 import {
   Select,
   SelectContent,
@@ -35,7 +33,8 @@ import {
 } from "@/components/ui/select"
 
 import { getPatientById, updatePatientToDb, deletePatientFromDb } from "@/lib/patient-db";
-import { motion } from "framer-motion";
+import { useStatusToast } from "@/lib/useStatusToast";
+
 import {
   User,
   CalendarDays,
@@ -48,7 +47,6 @@ import {
   RefreshCcw,
   Cake
 } from "lucide-react";
-import { toast } from "sonner";
 
 type Patient = {
   patient_id: string;
@@ -111,44 +109,35 @@ export default function PatientProfile() {
   const [editedDOB, setEditedDOB] = useState<Date>(new Date());
   const [editedGender, setEditedGender] = useState("");
   const [loading,setLoading]=useState(true)
-  const [message, setMessage]= useState<string | null>(null);
-  const [status,setStatus]=useState<string | null>(null);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
 
+  const [statusData, setStatusData] = useState({status: "", message: ""});
+  useStatusToast(statusData);
 
   useEffect(() => {
         if (!id) return;
     fetchPatient();
   }, []);
 
-  //show required toast message (successful or unsuccessful deletion/editing of pitch)
-  useEffect(() => {
-    if (status==="success")
-      toast.success(message)
-    else if(status==="danger")
-      toast.error(message)
-
-  }, [message,status]);
-
-    //fetching data from db
-    const fetchPatient  = async () => {
+  //fetching data from db
+  const fetchPatient  = async () => {
     try {
-        setLoading(true)
-        const data = await getPatientById(id);
-        console.log(data)
+      setLoading(true)
+      const data = await getPatientById(id);
+      console.log(data)
 
-        const normalizedPatient: Patient = {
-        patient_id: String(data.patient_id),
-        name: data.name,
-        gender: data.gender,
-        cnic: String(data.cnic),
-        dob: new Date(data.dob),
-        created_at: new Date(data.created_at),
-        updated_at: data.updated_at ? new Date(data.updated_at) : undefined,
-        };
+      const normalizedPatient: Patient = {
+      patient_id: String(data.patient_id),
+      name: data.name,
+      gender: data.gender,
+      cnic: String(data.cnic),
+      dob: new Date(data.dob),
+      created_at: new Date(data.created_at),
+      updated_at: data.updated_at ? new Date(data.updated_at) : undefined,
+      };
 
-        setPatient(normalizedPatient);
+      setPatient(normalizedPatient);
       
     } catch (error) {
         console.error("Failed to get Data");
@@ -174,8 +163,7 @@ export default function PatientProfile() {
       console.log("Saving")
       // console.log("Saving", id, newTitle, newBody);
       const res=await updatePatientToDb(id,newName,newDOB, newGender)
-      setMessage(res.message);
-      setStatus(res.status)
+      setStatusData({ status: res.status, message: res.message });
       await fetchPatient();
     }
     finally{
@@ -195,8 +183,7 @@ export default function PatientProfile() {
       console.log("Deleting")
       // console.log("Deleting", id);
       const res=await deletePatientFromDb(id)
-      setMessage(res.message);
-      setStatus(res.status);
+      setStatusData({ status: res.status, message: res.message });
       // await fetchPatient();
       if (res.status==='danger'){
 

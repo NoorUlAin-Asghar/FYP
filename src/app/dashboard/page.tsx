@@ -7,6 +7,7 @@ import { getUserPatientsWithEmail } from "@/lib/patient-db";
 import { motion } from "framer-motion";
 import { Plus } from "lucide-react"
 import { toast } from "sonner";
+import { useStatusToast } from "@/lib/useStatusToast";
 
 type Patient = {
   patient_id: string;
@@ -23,21 +24,12 @@ export default function Dashboard() {
   const [count,setCount]=useState(0)
   const router = useRouter();
   const [loading,setLoading]=useState(false)
-  const [message, setMessage]= useState<string | null>(null);
-  const [status,setStatus]=useState<string | null>(null);
+  const [statusData, setStatusData] = useState({status: "", message: ""});
+  useStatusToast(statusData);
 
   useEffect(() => {
     getData();
   }, []);
-
-  //show required toast message (successful or unsuccessful fetching of data)
-  useEffect(() => {
-    if (status==="success")
-      toast.success(message)
-    else if(status==="danger")
-      toast.error(message)
-
-  }, [message,status]);
 
     //fetching data from db
     const getData = async () => {
@@ -49,8 +41,7 @@ export default function Dashboard() {
       setCount(data?.count || 0);
     } catch (error) {
       console.error("Failed to get Data");
-      setMessage("Failed to get Data")
-      setStatus("danger")
+      setStatusData({ status: "danger", message: "Failed to get Data" });
     }
     finally{
       setLoading(false);
