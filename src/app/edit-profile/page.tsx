@@ -15,7 +15,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import Image from "next/image";
 
 export default function EditProfilePage() {
   const router = useRouter();
@@ -25,9 +24,11 @@ export default function EditProfilePage() {
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [bio, setBio] = useState("");
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [phone, setPhone] = useState(""); // 🔹 Added
+  const [gender, setGender] = useState(""); // 🔹 Added
+  const [cnic, setCnic] = useState("");
+  const [dob, setDob] = useState("");
+  const [hasProfile, setHasProfile] = useState(false); // 🔹 Track existing profile
 
   /* ---------------- Load user data ---------------- */
   useEffect(() => {
@@ -43,14 +44,17 @@ export default function EditProfilePage() {
 
       const { data } = await supabase
         .from("profiles")
-        .select("full_name, bio, avatar_url")
+        .select("full_name, phone, gender, cnic, dob") // 🔹 Updated columns
         .eq("id", user.id)
-        .single();
+        .maybeSingle(); // 🔹 Fixed: Use maybeSingle to avoid error for new users
 
       if (data) {
         setName(data.full_name || "");
-        setBio(data.bio || "");
-        setAvatarUrl(data.avatar_url || null);
+        setPhone(data.phone || ""); // 🔹 Added
+        setGender(data.gender || ""); // 🔹 Added
+        setCnic(data.cnic || "");
+        setDob(data.dob || "");
+        setHasProfile(true); // 🔹 Mark profile exists
       }
 
       setLoading(false);
@@ -64,45 +68,84 @@ export default function EditProfilePage() {
     setSaving(true);
 
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) {
+      toast.error("Not authenticated");
+      setSaving(false);
+      return;
+    }
 
-    let uploadedAvatarUrl = avatarUrl;
+    // Validation
+    if (!name.trim()) {
+      toast.error("Full name is required");
+      setSaving(false);
+      return;
+    }
 
-    if (avatarFile) {
-      const fileExt = avatarFile.name.split(".").pop();
-      const filePath = `${user.id}.${fileExt}`;
+    if (!hasProfile && !cnic.trim()) {
+      toast.error("CNIC is required for initial profile creation");
+      setSaving(false);
+      return;
+    }
 
-      const { error: uploadError } = await supabase.storage
-        .from("avatars")
-        .upload(filePath, avatarFile, { upsert: true });
+    // Check if profile exists
+    const { data: existingProfile, error: fetchError } = await supabase
+      .from("profiles")
+      .select("id, cnic")
+      .eq("id", user.id)
+      .maybeSingle();
 
-      if (uploadError) {
-        toast.error("Failed to upload image");
+    if (fetchError) {
+      toast.error(fetchError.message);
+      setSaving(false);
+      return;
+    }
+
+    // 2️⃣ UPDATE (NO CNIC)
+    if (existingProfile) {
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          full_name: name,
+          phone, // 🔹 Added
+          gender, // 🔹 Added
+          dob: dob,
+          updated_at: new Date().toISOString(),
+          // ❌ Removed: bio, avatar_url
+        })
+        .eq("id", user.id);
+
+      if (error) {
+        toast.error(error.message);
         setSaving(false);
         return;
       }
-
-      const { data } = supabase.storage
-        .from("avatars")
-        .getPublicUrl(filePath);
-
-      uploadedAvatarUrl = data.publicUrl;
     }
 
-    const { error } = await supabase.from("profiles").upsert({
-      id: user.id,
-      full_name: name,
-      bio,
-      avatar_url: uploadedAvatarUrl,
-    });
+    // 3️⃣ INSERT (CNIC allowed ONCE)
+    else {
+      const { error } = await supabase
+        .from("profiles")
+        .insert({
+          id: user.id,
+          email: user.email, // 🔹 Added (schema requires this)
+          full_name: name,
+          phone: phone || null, // 🔹 Added
+          gender: gender || null, // 🔹 Added
+          cnic: cnic || null,
+          dob: dob || null,
+          updated_at: new Date().toISOString(),
+          // ❌ Removed: bio, avatar_url
+        });
 
-    if (error) {
-      toast.error("Failed to save profile");
-    } else {
-      toast.success("Profile updated successfully");
-      router.push("/dashboard");
+      if (error) {
+        toast.error(error.message);
+        setSaving(false);
+        return;
+      }
     }
 
+    toast.success("Profile saved successfully");
+    router.push("/dashboard");
     setSaving(false);
   };
 
@@ -121,32 +164,9 @@ export default function EditProfilePage() {
         </CardHeader>
 
         <CardContent className="space-y-6">
-          {/* Avatar */}
-          <div className="flex flex-col items-center gap-4">
-            {avatarUrl ? (
-              <Image
-                src={avatarUrl}
-                alt="Profile"
-                width={120}
-                height={120}
-                className="rounded-full border"
-              />
-            ) : (
-              <div className="w-28 h-28 rounded-full bg-gray-200 flex items-center justify-center text-gray-500">
-                No Image
-              </div>
-            )}
-
-            <Input
-              type="file"
-              accept="image/*"
-              onChange={(e) => setAvatarFile(e.target.files?.[0] || null)}
-            />
-          </div>
-
           {/* Name */}
           <div>
-            <Label>Full Name</Label>
+            <Label>Full Name *</Label>
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -154,19 +174,61 @@ export default function EditProfilePage() {
             />
           </div>
 
-          {/* Email (readonly) */}
+          {/* Email */}
           <div>
             <Label>Email</Label>
             <Input value={email} disabled />
           </div>
 
-          {/* Bio */}
+          {/* 🔹 Phone */}
           <div>
-            <Label>Bio</Label>
+            <Label>Phone</Label>
             <Input
-              value={bio}
-              onChange={(e) => setBio(e.target.value)}
-              placeholder="Tell something about yourself"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="0300-1234567"
+              type="tel"
+            />
+          </div>
+
+          {/* 🔹 Gender */}
+          <div>
+            <Label>Gender</Label>
+            <select
+              value={gender}
+              onChange={(e) => setGender(e.target.value)}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <option value="">Select Gender</option>
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+
+          {/* CNIC */}
+          <div>
+            <Label>CNIC {!hasProfile && "*"}</Label>
+            <Input
+              value={cnic}
+              onChange={(e) => setCnic(e.target.value)}
+              placeholder="12345-1234567-1"
+              disabled={hasProfile} // 🔹 Fixed: Disable based on profile existence
+            />
+            {hasProfile && (
+              <p className="text-xs text-muted-foreground mt-1">
+                CNIC cannot be changed once saved
+              </p>
+            )}
+          </div>
+
+          {/* DOB */}
+          <div>
+            <Label>Date of Birth</Label>
+            <Input
+              type="date"
+              value={dob}
+              onChange={(e) => setDob(e.target.value)}
             />
           </div>
         </CardContent>
@@ -175,7 +237,7 @@ export default function EditProfilePage() {
           <Button
             onClick={handleSave}
             disabled={saving}
-            className="bg-[#008080] hover:bg-[#008080]"
+            className="bg-[#008080] hover:bg-[#006666]"
           >
             {saving ? "Saving..." : "Save Changes"}
           </Button>
